@@ -27,27 +27,50 @@ export default function LoginPage() {
     const supabase = createClient()
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log("[v0] Attempting login for:", email)
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
+      if (signInError) {
+        console.log("[v0] Sign in error:", signInError.message)
+        throw signInError
+      }
+
+      console.log("[v0] Sign in successful, user:", data.user?.id)
 
       if (data.user) {
-        const { data: profile } = await supabase
+        const userRole = data.user.user_metadata?.role
+        console.log("[v0] User metadata role:", userRole)
+
+        let role = userRole
+        let forcePasswordChange = false
+
+        // Try to get profile data
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role, force_password_change")
           .eq("id", data.user.id)
           .single()
 
-        if (profile?.force_password_change) {
+        console.log("[v0] Profile data:", profile, "Error:", profileError?.message)
+
+        if (profile) {
+          role = profile.role
+          forcePasswordChange = profile.force_password_change
+        }
+
+        if (forcePasswordChange) {
           router.push("/change-password")
           return
         }
 
+        console.log("[v0] Final role:", role, "- Redirecting...")
+
         // Redirect based on role
-        switch (profile?.role) {
+        switch (role) {
           case "admin":
             router.push("/admin")
             break
@@ -59,9 +82,12 @@ export default function LoginPage() {
             router.push("/dashboard/buyer")
             break
         }
+
+        router.refresh()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      console.log("[v0] Login error:", err)
+      setError(err instanceof Error ? err.message : "An error occurred during login")
     } finally {
       setIsLoading(false)
     }

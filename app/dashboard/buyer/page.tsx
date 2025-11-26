@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Diamond, Search, Heart, Clock, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function BuyerDashboard() {
@@ -19,9 +19,16 @@ export default async function BuyerDashboard() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-  if (profile?.role !== "buyer") {
+  if (profile?.role !== "buyer" && profile?.role !== "admin") {
     redirect("/login")
   }
+
+  const { data: approvedGems } = await supabase
+    .from("gems")
+    .select("*")
+    .in("status", ["approved", "active"])
+    .order("created_at", { ascending: false })
+    .limit(6)
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,20 +86,47 @@ export default async function BuyerDashboard() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Browse Auctions</CardTitle>
-            <CardDescription>Find rare gemstones from trusted sellers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link href="/auctions">
-                <Search className="w-4 h-4 mr-2" />
-                Browse All Auctions
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Available Gemstones</h2>
+          <Button asChild>
+            <Link href="/auctions">
+              <Search className="w-4 h-4 mr-2" />
+              Browse All Auctions
+            </Link>
+          </Button>
+        </div>
+
+        {approvedGems && approvedGems.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {approvedGems.map((gem) => (
+              <Card key={gem.id} className="overflow-hidden">
+                <div className="aspect-square bg-muted flex items-center justify-center">
+                  <Diamond className="w-16 h-16 text-muted-foreground/30" />
+                </div>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-foreground mb-1">{gem.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {gem.gem_type} - {gem.weight_carats} ct
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-primary">${gem.starting_price?.toLocaleString()}</span>
+                    <Button size="sm" variant="outline">
+                      View Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Diamond className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground mb-4">No gemstones available at the moment</p>
+              <p className="text-sm text-muted-foreground">Check back soon for new listings!</p>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   )

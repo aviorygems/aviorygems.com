@@ -37,7 +37,9 @@ export default function SellerRegisterPage() {
     const supabase = createClient()
 
     try {
-      const { error } = await supabase.auth.signUp({
+      console.log("[v0] Starting seller registration for:", formData.email)
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -55,11 +57,25 @@ export default function SellerRegisterPage() {
         },
       })
 
-      if (error) throw error
+      if (signUpError) {
+        console.log("[v0] Sign up error:", signUpError.message)
+        throw signUpError
+      }
 
-      router.push("/auth/sign-up-success")
+      console.log("[v0] Sign up response:", data)
+
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        console.log("[v0] Email confirmation required for seller")
+        router.push("/auth/sign-up-success?type=seller")
+      } else if (data.user && data.session) {
+        console.log("[v0] Auto-confirmed seller, redirecting to dashboard")
+        router.push("/dashboard/seller")
+        router.refresh()
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      console.log("[v0] Seller registration error:", err)
+      setError(err instanceof Error ? err.message : "An error occurred during registration")
     } finally {
       setIsLoading(false)
     }

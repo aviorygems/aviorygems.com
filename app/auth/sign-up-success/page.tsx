@@ -1,9 +1,16 @@
 import Link from "next/link"
-import { Diamond, Mail } from "lucide-react"
+import { Diamond, Mail, Clock } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
-export default function SignUpSuccessPage() {
+export default async function SignUpSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>
+}) {
+  const params = await searchParams
+  const isSeller = params.type === "seller"
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border py-4">
@@ -28,6 +35,22 @@ export default function SignUpSuccessPage() {
             <p className="text-sm text-muted-foreground">
               Please click the link in the email to activate your account. If you don't see it, check your spam folder.
             </p>
+
+            {isSeller && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-left">
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-800 dark:text-amber-200">Seller Account Review</p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      After verifying your email, your seller account will be reviewed by our admin team. You'll be
+                      notified once approved to start listing your gemstones.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Button asChild variant="outline" className="w-full bg-transparent">
               <Link href="/login">Back to Sign In</Link>
             </Button>

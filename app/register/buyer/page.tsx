@@ -15,6 +15,7 @@ export default function BuyerRegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -31,7 +32,9 @@ export default function BuyerRegisterPage() {
     const supabase = createClient()
 
     try {
-      const { error } = await supabase.auth.signUp({
+      console.log("[v0] Starting buyer registration for:", formData.email)
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -45,11 +48,26 @@ export default function BuyerRegisterPage() {
         },
       })
 
-      if (error) throw error
+      if (signUpError) {
+        console.log("[v0] Sign up error:", signUpError.message)
+        throw signUpError
+      }
 
-      router.push("/auth/sign-up-success")
+      console.log("[v0] Sign up response:", data)
+
+      if (data.user && !data.session) {
+        // Email confirmation required
+        console.log("[v0] Email confirmation required")
+        router.push("/auth/sign-up-success")
+      } else if (data.user && data.session) {
+        // Auto-confirmed (for development)
+        console.log("[v0] Auto-confirmed, redirecting to dashboard")
+        router.push("/dashboard/buyer")
+        router.refresh()
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      console.log("[v0] Registration error:", err)
+      setError(err instanceof Error ? err.message : "An error occurred during registration")
     } finally {
       setIsLoading(false)
     }
