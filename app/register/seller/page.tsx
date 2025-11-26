@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Diamond, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,16 +11,58 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { createClient } from "@/lib/supabase/client"
 
 export default function SellerRegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    businessName: "",
+    email: "",
+    phone: "",
+    location: "",
+    experience: "",
+    password: "",
+  })
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Handle registration
-    setTimeout(() => setIsLoading(false), 1500)
+    setError(null)
+
+    const supabase = createClient()
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard/seller`,
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: "seller",
+            business_name: formData.businessName,
+            phone: formData.phone,
+            location: formData.location,
+            experience: formData.experience,
+          },
+        },
+      })
+
+      if (error) throw error
+
+      router.push("/auth/sign-up-success")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -46,32 +89,73 @@ export default function SellerRegisterPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" placeholder="John" required className="h-11" />
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  required
+                  className="h-11"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" placeholder="Doe" required className="h-11" />
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  required
+                  className="h-11"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="businessName">Business Name</Label>
-              <Input id="businessName" placeholder="Your Gem Trading Co." required className="h-11" />
+              <Input
+                id="businessName"
+                placeholder="Your Gem Trading Co."
+                required
+                className="h-11"
+                value={formData.businessName}
+                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="john@example.com" required className="h-11" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@example.com"
+                required
+                className="h-11"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+94 77 123 4567" required className="h-11" />
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+94 77 123 4567"
+                required
+                className="h-11"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Select required>
+              <Select
+                required
+                value={formData.location}
+                onValueChange={(value) => setFormData({ ...formData, location: value })}
+              >
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="Select your location" />
                 </SelectTrigger>
@@ -91,6 +175,8 @@ export default function SellerRegisterPage() {
                 id="experience"
                 placeholder="Tell us about your experience in the gem trade..."
                 className="min-h-[100px] resize-none"
+                value={formData.experience}
+                onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
               />
             </div>
 
@@ -103,6 +189,8 @@ export default function SellerRegisterPage() {
                   placeholder="Create a password"
                   required
                   className="h-11 pr-10"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
                 <button
                   type="button"
@@ -112,6 +200,7 @@ export default function SellerRegisterPage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground">Must be at least 6 characters</p>
             </div>
 
             <div className="flex items-start gap-3">
@@ -131,6 +220,8 @@ export default function SellerRegisterPage() {
                 </Link>
               </Label>
             </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <Button
               type="submit"

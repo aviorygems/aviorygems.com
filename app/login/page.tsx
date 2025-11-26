@@ -3,21 +3,68 @@
 import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Diamond, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Handle login
-    setTimeout(() => setIsLoading(false), 1500)
+    setError(null)
+
+    const supabase = createClient()
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) throw error
+
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, force_password_change")
+          .eq("id", data.user.id)
+          .single()
+
+        if (profile?.force_password_change) {
+          router.push("/change-password")
+          return
+        }
+
+        // Redirect based on role
+        switch (profile?.role) {
+          case "admin":
+            router.push("/admin")
+            break
+          case "seller":
+            router.push("/dashboard/seller")
+            break
+          case "buyer":
+          default:
+            router.push("/dashboard/buyer")
+            break
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -43,7 +90,15 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="john@example.com" required className="h-11" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@example.com"
+                required
+                className="h-11"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -60,6 +115,8 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   required
                   className="h-11 pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -77,6 +134,8 @@ export default function LoginPage() {
                 Remember me
               </Label>
             </div>
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
             <Button
               type="submit"
